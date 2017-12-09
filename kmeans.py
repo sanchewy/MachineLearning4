@@ -32,7 +32,7 @@ def kmeans_cluster(data, numClusters):
         for cluster in clusters:
             cluster[0] = sum(cluster[1])/float(len(cluster))
     pass
-    
+
 def load_csv(filename):
     dataset = list()
     with open(filename, 'r') as file:
@@ -42,35 +42,26 @@ def load_csv(filename):
                 continue
             dataset.append(row)
     return dataset
-    
+
 def distance(point1, point2):
     dim = len(point1)
     if(dim != len(point2)):
         raise ValueError('Tried to calculate distance between two points of differenent dimensions')
     summ = sum(*[(x-y) ** dim for x,y in zip(list1,list2)])
     return summ ** (1/dim)
-    
+
 #change data string to number
 def str_to_float(dataset):
-    for row in dataset:
-        for x in row:
-            x = float(x.strip())
+    for row in range(len(dataset)):
+        for x in range(len(dataset[row])):
+            dataset[row][x] = float(dataset[row][x].strip())
 
 if __name__ == '__main__':
     dataset = load_csv(data_set_location)
     dataset = [i[1:7] for i in dataset]
-    print(dataset)
+    print(type(dataset[1][0]))
     str_to_float(dataset)
     print(dataset)
-    self.str_to_float(dataset)
-    self.normalize_data(dataset)
     holder = dataset
     length = int(len(holder)/5)
-    stop = databreak * length
-    self.test_dataset = holder[stop:stop+length]
-    self.dataset = holder[:stop]+holder[stop+length:len(holder)]
-        
-        
-        
-        
-        
+    kmeans_cluster(dataset, 5)
