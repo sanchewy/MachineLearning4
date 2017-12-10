@@ -4,8 +4,9 @@ from csv import reader
 import numpy as np
 import functools
 
-data_set_location = "data/winequality-red.csv"
-#data_set_location = "data/tao-all2.txt"
+#data_set_location = "data/winequality-red.csv"
+data_set_location = "data/tao-all2.txt"
+#data_set_location = "data/heart_disease.txt"
 
 #Create and return clusters according to the kmeans clustering algorithm.
 def kmeans_cluster(data, numClusters):
@@ -116,7 +117,7 @@ def cluster_seperation(centroid1, centroid2):
 def load_csv(filename):
     dataset = list()
     with open(filename, 'r') as file:
-        csv_reader = reader(file, delimiter=';')
+        csv_reader = reader(file, delimiter=' ')
         for row in csv_reader:
             if not row:
                 continue
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     holder = dataset
     length = int(len(holder)/5)
     
-    minpts, theta = 40, 10
+    minpts, theta = 20, 20
     print("---------------------------------------------------------------------------------------------------")
     print("Performing db_scan on file: %s with minpts = %s and theta = %s." % (data_set_location, str(minpts), str(theta)))
     clusters_db = dbscan_cluster(dataset, minpts, theta)
@@ -169,9 +170,9 @@ if __name__ == '__main__':
     print("Davies-Bouldin index for DB-SCAN clustering: %s.\n" % (str(sum(r)/len(r))))
     print("---------------------------------------------------------------------------------------------------")
     
-    numClusters = len(clusters_db)
+    numClusters = 10
     print("Performing k-means on file: %s with numClusters = %s. Adopted from the numClusters found by dbscan." % (data_set_location, str(numClusters)))
-    clusters_km = kmeans_cluster(dataset, len(clusters_db))
+    clusters_km = kmeans_cluster(dataset, numClusters)
     r = list()
     print("Calculating the Davies-Bouldin index for k-means clustering.")
     for c in clusters_km:
