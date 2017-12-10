@@ -4,8 +4,10 @@ from csv import reader
 import numpy as np
 import functools
 
-data_set_location = "data/tao-all2.dat"
+data_set_location = "data/winequality-red.csv"
+#data_set_location = "data/tao-all2.txt"
 
+#Create and return clusters according to the kmeans clustering algorithm.
 def kmeans_cluster(data, numClusters):
     clusters = list()
     #Pick initial centroids randomly
@@ -47,8 +49,9 @@ def kmeans_cluster(data, numClusters):
                     centroid_attr.append(sum([x[attr] for x in cluster[1]])/float(len(cluster[1])))
     return clusters
     
+#Create and return clusters according to the DBSCAN algorithm.
 def dbscan_cluster(data, minpts, theta):
-    #label all points core = 2, noise = 0, or border = 1
+    #Label all points core = 2, noise = 0, or border = 1
     core = list()
     for point in range(len(data)):
         thresh_points = 0
@@ -58,7 +61,7 @@ def dbscan_cluster(data, minpts, theta):
         if thresh_points > minpts:
             core.append(point)
             
-    #Assign clusters
+    #Assign clusters labels
     cluster_tuples = [[0,x] for x in data]
     currCluster = 0
     for c in core:
@@ -69,21 +72,25 @@ def dbscan_cluster(data, minpts, theta):
             if cluster_tuples[point][0] == 0:
                 if distance(cluster_tuples[point][1], data[c]) < theta:
                     cluster_tuples[point][0] = currCluster
-        
-    clusters = [list()] * currCluster
+                    
+    #Create clusters from labels
+    clusters = [[] for _ in range(currCluster)]
     for p in cluster_tuples:
         if p[0] != 0:
             clusters[p[0]-1].append(p[1])
+            
     return clusters
     
+#Find and return the centroids for clusters for the davies-bouldin evaluation metric.    
 def get_centroids(cluster):
     cent = list()
     for x in range(len(cluster[0])):
         cent.append(sum([point[x] for point in cluster]))
     cent = [x/len(cluster) for x in cent]
-    print(cent)
+    #print(cent)
     return cent
                 
+#Return the scatter parth of the davies-bouldin index evaluation metric.
 def cluster_scatter(cluster, centroid):
     dim = len(centroid)
     sum_centroid_dist = 0
@@ -97,58 +104,43 @@ def cluster_scatter(cluster, centroid):
         print("Error, there was an empty cluster.")
         return (sum_centroid_dist/.001) ** (1/dim)
     
+#Find and return the minimum square distance betwen cluster centers
 def cluster_seperation(centroid1, centroid2):
-    #Minimum square distance betwen cluster centers
     return distance(centroid1,centroid2)
     
+#Load a csv from "filename" above. Returns list of rows of data.
 def load_csv(filename):
     dataset = list()
     with open(filename, 'r') as file:
-        csv_reader = reader(file, delimiter=' ')
+        csv_reader = reader(file, delimiter=';')
         for row in csv_reader:
             if not row:
                 continue
             dataset.append(row)
     return dataset
 
+#Compute and return the distance between two N-dimensional vectors
 def distance(point1, point2):
-    #print("Compare: %s %s" % (str(point1),str(point2)))
     dim = len(point1)
     if(dim != len(point2)):
         raise ValueError('Tried to calculate distance between two points of differenent dimensions %s %s')
     summ = sum([abs(x-y) ** dim for x,y in zip(point1,point2)])
     return summ ** (1/dim)
 
-#change data string to number
+#Change data string to number during the csv import process.
 def str_to_float(dataset):
     for row in range(len(dataset)):
         for x in range(len(dataset[row])):
             dataset[row][x] = float(dataset[row][x].strip())
 
+#Main run method for kmeans and dbscan.
 if __name__ == '__main__':
     dataset = load_csv(data_set_location)
     dataset = [i[1:7] for i in dataset]
     str_to_float(dataset)
     holder = dataset
     length = int(len(holder)/5)
-    #clusters = kmeans_cluster(dataset, 20)
-    #print("Number of clusters: %s" % (len(clusters)))
-    #r = list()
-    #for c in clusters:
-    #    other_clusters = list(clusters)
-    #    other_clusters.remove(c)
-    #    try:
-    #        r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
-    #    except ZeroDivisionError:
-    #        print("Error, there was an empty cluster that caused dividion by zero.")
-    #        sys.exit()
-    #print("Davies-Bouldin index: %s" % (str(sum(r)/len(r))))
-    
-    clusters = dbscan_cluster(dataset, 10, 10)
-    for c in range(len(clusters)):
-        clusters[c] = [get_centroids(clusters[c]), clusters[c]]
-    #print(clusters[0])
-    #print("Number of clusters: %s" % (len(clusters)))
+    clusters = kmeans_cluster(dataset, 7)
     r = list()
     for c in clusters:
         other_clusters = list(clusters)
@@ -156,6 +148,26 @@ if __name__ == '__main__':
         try:
             r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
         except ZeroDivisionError:
-           print("Error, there was an empty cluster that caused dividion by zero.")
+            print("Error, there was an empty cluster that caused dividion by zero.")
+            sys.exit()
+    print("Davies-Bouldin index for k-means clustering: %s" % (str(sum(r)/len(r))))
+    
+    clusters = dbscan_cluster(dataset, 40, 10)
+    for c in range(len(clusters)):
+        if len(clusters[c]) == 0:
+            clusters.pop(c)
+        else:
+            clusters[c] = [get_centroids(clusters[c]), clusters[c]]
+    #print(clusters[0])
+    #print("Number of clusters: %s" % (len(clusters)))
+    r = list()
+    for c in clusters:
+        other_clusters = list(clusters)
+        other_clusters.pop(clusters.index(c))
+        try:
+            r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
+        except ZeroDivisionError:
+           print("Error, the distance between two clusters was so small it caused division by zero.")
            sys.exit()
-    print("Davies-Bouldin index: %s" % (str(sum(r)/len(r))))
+    print("Davies-Bouldin index for DB-SCAN clustering: %s" % (str(sum(r)/len(r))))
+    
