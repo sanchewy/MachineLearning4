@@ -11,6 +11,7 @@ data_set_location = "data/winequality-red.csv"
 def kmeans_cluster(data, numClusters):
     clusters = list()
     #Pick initial centroids randomly
+    print("Randomly selecting initial %s centroids from the data." % (str(numClusters)))
     for i in range(numClusters):
         clusters.append([data[random.randint(0,len(data)-1)], []])
     #Put all the data into the first centroid temporarily
@@ -42,7 +43,7 @@ def kmeans_cluster(data, numClusters):
                     clusters[min_dist_centroid][1].append(point)
         #Recalculate centroids
         for cluster in clusters:
-            #print(cluster[1])
+            print("Recalculating centroids.")
             centroid_attr = list()
             if len(cluster[1]) > 0:
                 for attr in range(len(cluster[1][0])):
@@ -52,6 +53,7 @@ def kmeans_cluster(data, numClusters):
 #Create and return clusters according to the DBSCAN algorithm.
 def dbscan_cluster(data, minpts, theta):
     #Label all points core = 2, noise = 0, or border = 1
+    print("Labeling the points as core, noise, or border.")
     core = list()
     for point in range(len(data)):
         thresh_points = 0
@@ -62,6 +64,7 @@ def dbscan_cluster(data, minpts, theta):
             core.append(point)
             
     #Assign clusters labels
+    print("Assigning cluster labels to core points and their unlabeled neighbors.")
     cluster_tuples = [[0,x] for x in data]
     currCluster = 0
     for c in core:
@@ -74,6 +77,7 @@ def dbscan_cluster(data, minpts, theta):
                     cluster_tuples[point][0] = currCluster
                     
     #Create clusters from labels
+    print("Creating clusters from labels.")
     clusters = [[] for _ in range(currCluster)]
     for p in cluster_tuples:
         if p[0] != 0:
@@ -140,34 +144,44 @@ if __name__ == '__main__':
     str_to_float(dataset)
     holder = dataset
     length = int(len(holder)/5)
-    clusters = kmeans_cluster(dataset, 7)
+    
+    minpts, theta = 40, 10
+    print("---------------------------------------------------------------------------------------------------")
+    print("Performing db_scan on file: %s with minpts = %s and theta = %s." % (data_set_location, str(minpts), str(theta)))
+    clusters_db = dbscan_cluster(dataset, minpts, theta)
+    for c in range(len(clusters_db)):
+        if len(clusters_db[c]) == 0:
+            clusters_db.pop(c)
+        else:
+            clusters_db[c] = [get_centroids(clusters_db[c]), clusters_db[c]]
+
+    print("Given minpts = %s and theta = %s, dbscan found %s clusters." % (str(minpts), str(theta), str(len(clusters_db))))
     r = list()
-    for c in clusters:
-        other_clusters = list(clusters)
+    print("Calculating the Davies-Bouldin index for db-scan clustering.")
+    for c in clusters_db:
+        other_clusters = list(clusters_db)
+        other_clusters.pop(clusters_db.index(c))
+        try:
+            r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
+        except ZeroDivisionError:
+           print("Error, the distance between two clusters was so small it caused division by zero.")
+           sys.exit()
+    print("Davies-Bouldin index for DB-SCAN clustering: %s.\n" % (str(sum(r)/len(r))))
+    print("---------------------------------------------------------------------------------------------------")
+    
+    numClusters = len(clusters_db)
+    print("Performing k-means on file: %s with numClusters = %s. Adopted from the numClusters found by dbscan." % (data_set_location, str(numClusters)))
+    clusters_km = kmeans_cluster(dataset, len(clusters_db))
+    r = list()
+    print("Calculating the Davies-Bouldin index for k-means clustering.")
+    for c in clusters_km:
+        other_clusters = list(clusters_km)
         other_clusters.remove(c)
         try:
             r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
         except ZeroDivisionError:
             print("Error, there was an empty cluster that caused dividion by zero.")
             sys.exit()
-    print("Davies-Bouldin index for k-means clustering: %s" % (str(sum(r)/len(r))))
-    
-    clusters = dbscan_cluster(dataset, 40, 10)
-    for c in range(len(clusters)):
-        if len(clusters[c]) == 0:
-            clusters.pop(c)
-        else:
-            clusters[c] = [get_centroids(clusters[c]), clusters[c]]
-    #print(clusters[0])
-    #print("Number of clusters: %s" % (len(clusters)))
-    r = list()
-    for c in clusters:
-        other_clusters = list(clusters)
-        other_clusters.pop(clusters.index(c))
-        try:
-            r.append(max([(cluster_scatter(c[1],c[0])+cluster_scatter(x[1],x[0]))/cluster_seperation(c[0],x[0]) for x in other_clusters]))
-        except ZeroDivisionError:
-           print("Error, the distance between two clusters was so small it caused division by zero.")
-           sys.exit()
-    print("Davies-Bouldin index for DB-SCAN clustering: %s" % (str(sum(r)/len(r))))
+    print("Davies-Bouldin index for k-means clustering: %s." % (str(sum(r)/len(r))))
+    print("---------------------------------------------------------------------------------------------------")
     
